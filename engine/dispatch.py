@@ -16,6 +16,8 @@ from datetime import date
 
 from supabase import Client
 
+from risk import RiskLevels
+
 MACRO_CHECK_NOTE = (
     "관심 신호일 뿐 매매 권유가 아닙니다. 종가 기준이라 실제 체결가는 다를 수 있고, "
     "진입 전 하락 원인이 일시적 노이즈인지 구조적 레짐 전환인지 뉴스·매크로를 직접 확인하세요."
@@ -68,8 +70,8 @@ def decide_alert(
     return AlertDecision(True, "fire", fingerprint)
 
 
-def build_alert_record(subscription: dict, snapshot: dict) -> dict:
-    """발송 확정된 신호 → alerts insert dict. (손절/익절/RR 은 risk.py 연동 시 채움)"""
+def build_alert_record(subscription: dict, snapshot: dict, risk: RiskLevels) -> dict:
+    """발송 확정된 신호 + 리스크 레벨 → alerts insert dict."""
     return {
         "user_id": subscription["user_id"],
         "subscription_id": subscription["id"],
@@ -84,6 +86,11 @@ def build_alert_record(subscription: dict, snapshot: dict) -> dict:
             "bollinger_lower": snapshot.get("bollinger_lower"),
         },
         "close_price": snapshot.get("close_price"),
+        "stop_price": risk.stop_price,
+        "target_primary": risk.target_primary,
+        "target_secondary": risk.target_secondary,
+        "risk_reward_ratio": risk.risk_reward_ratio,
+        "risk_reward_sufficient": risk.risk_reward_sufficient,
         "macro_check_note": MACRO_CHECK_NOTE,
     }
 
@@ -117,7 +124,7 @@ def upsert_alert_state(client: Client, subscription_id: str, user_id: str, alert
     ).execute()
 
 
-def dispatch_symbol(client: Client, symbol: str, snapshot: dict, today: date) -> list[dict]:
+def dispatch_symbol(client: Client, symbol: str, snapshot: dict, risk: RiskLevels, today: date) -> list[dict]:
     """한 종목 스냅샷을 구독자별로 판정 → 발송 대상 alert 레코드 목록 생성/기록.
 
     반환: 이번에 새로 만든 alerts 레코드(발송할 대상). 실제 이메일 전송은 notify 가 담당.
@@ -135,7 +142,7 @@ def dispatch_symbol(client: Client, symbol: str, snapshot: dict, today: date) ->
         )
         if not decision.should_alert:
             continue
-        record = build_alert_record(subscription, snapshot)
+        record = build_alert_record(subscription, snapshot, risk)
         inserted = client.table("alerts").insert(record).execute().data[0]
         upsert_alert_state(client, subscription["id"], subscription["user_id"], today, decision.fingerprint)
         fired.append(inserted)
