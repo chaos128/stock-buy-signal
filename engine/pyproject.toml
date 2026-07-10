@@ -1,0 +1,23 @@
+[project]
+name = "stock-buy-signal-engine"
+version = "0.1.0"
+description = "매수 신호 엔진 — 지표 계산, 층별 신호 판정, fan-out, 이메일 발송"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "yfinance>=0.2.40",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+# 애플리케이션이라 자체 패키지 빌드는 하지 않음 (deps 만 관리)
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
