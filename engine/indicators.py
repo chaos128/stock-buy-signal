@@ -73,3 +73,27 @@ def relative_strength_index(close: pd.Series, period: int = 14) -> pd.Series:
     # avg_loss == 0 → 분모 0 → RSI 100 으로 확정(inf 연산 회피)
     rsi = rsi.mask(average_loss == 0, 100.0)
     return rsi
+
+
+def average_true_range(ohlc: pd.DataFrame, period: int = 14) -> pd.Series:
+    """ATR(Wilder) — 변동성 기반 손절폭 산정에 사용.
+
+    True Range = max(high-low, |high-이전종가|, |low-이전종가|)
+    ATR = TR 의 Wilder 스무딩(RMA). 첫 봉은 이전 종가가 없어 TR 을 NaN 처리(시드 제외).
+    첫 값은 iloc[period] 부터 정의됨.
+    """
+    high = ohlc["high"]
+    low = ohlc["low"]
+    previous_close = ohlc["close"].shift(1)
+
+    true_range = pd.concat(
+        [
+            high - low,
+            (high - previous_close).abs(),
+            (low - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    true_range.iloc[0] = float("nan")  # 이전 종가 없음 → 시드에서 제외
+
+    return _wilder_average(true_range, period)

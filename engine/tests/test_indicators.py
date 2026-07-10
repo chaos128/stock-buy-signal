@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from indicators import (
+    average_true_range,
     bollinger_bands,
     relative_strength_index,
     simple_moving_average,
@@ -65,3 +66,20 @@ def test_rsi_edges():
     assert relative_strength_index(increasing, period=3).iloc[-1] == pytest.approx(100.0)
     # 상승 없음 → RSI 0
     assert relative_strength_index(decreasing, period=3).iloc[-1] == pytest.approx(0.0)
+
+
+def test_average_true_range_hand_computed():
+    # period=3.  TR[1..3] = 2,2,2 → 시드 ATR(iloc3)=2.0
+    # idx4: h=15,l=11,prev_close=12 → TR=max(4,3,1)=4 → ATR=(2*2+4)/3=2.6667
+    ohlc = pd.DataFrame(
+        {
+            "high": [10, 11, 12, 13, 15],
+            "low": [8, 9, 10, 11, 11],
+            "close": [9, 10, 11, 12, 14],
+        },
+        dtype="float64",
+    )
+    atr = average_true_range(ohlc, period=3)
+    assert math.isnan(atr.iloc[2])
+    assert atr.iloc[3] == pytest.approx(2.0)
+    assert atr.iloc[4] == pytest.approx(8.0 / 3.0, abs=1e-6)

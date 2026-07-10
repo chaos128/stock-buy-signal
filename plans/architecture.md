@@ -83,21 +83,22 @@
 
 ```
 stock-buy-signal/
-  engine/                    # Python — 신호 소스 오브 트루스
-    fetch.py                 # yfinance: 큐레이션 종목 + ^VIX 일봉
-    indicators.py            # SMA200, Bollinger(20,2), RSI(14), VIX SMA20
+  engine/                    # Python(uv) — 신호 소스 오브 트루스 (+ 백테스트)
+    fetch.py                 # yfinance 일봉 (인덱스 날짜 정규화로 심볼 간 정렬 보장)
+    indicators.py            # SMA, Bollinger(ddof=0), Wilder RSI, ATR
     signals.py               # 층별 boolean + score (순수 함수)
-    risk.py                  # 손절/익절/손익비 계산
-    event_calendar.py        # FOMC/CPI/고용 D-1 게이트
-    dispatch.py              # 종목 스냅샷 → 구독자 fan-out (임계치/스로틀)
-    notify.py                # 발송 인터페이스 (Resend 구현)
-    store.py                 # Supabase (service-role) read/write
-    main.py                  # 오케스트레이션 (워커 엔트리)
-    pyproject.toml
-  backtest/                  # Python — engine.signals 재사용
-    run.py                   # 과거 리플레이 + 청산 시뮬
-    metrics.py               # 승률, 평균R, 기대값, MDD, 거래횟수
-    sensitivity.py           # 파라미터 민감도 스윕 + out-of-sample 분할
+    sanity_check.py          # 실데이터 신호 확인 스크립트
+    risk.py                  # 손절/익절/손익비 (예정)
+    event_calendar.py        # FOMC/CPI/고용 D-1 게이트 (예정)
+    dispatch.py              # 종목 스냅샷 → 구독자 fan-out (예정)
+    notify.py                # 발송 인터페이스, Resend (예정)
+    store.py                 # Supabase (service-role) read/write (예정)
+    main.py                  # 워커 엔트리 (예정)
+    backtest/                # engine.signals 재사용 — 과거 리플레이 + 검증
+      simulate.py            # 트레이드 시뮬 (ATR 손절, 중심선 목표)
+      metrics.py             # 승률/평균R/기대값/MDD
+      run.py                 # 전체 이력 실행 (uv run python -m backtest.run)
+    tests/                   # 지표·신호 pin/behavioral 테스트
   dashboard/                 # Next.js (App Router) PWA — Vercel — 아래 §3.1 FSD 구조
   supabase/
     migrations/              # 스키마 + RLS 정책
@@ -106,8 +107,9 @@ stock-buy-signal/
     architecture.md          # (이 문서)
 ```
 
-- `engine/signals.py`의 판정 함수는 **입력이 가격 시계열, 출력이 층별 boolean+score인 순수 함수**. 라이브 잡(`engine/main.py`)과 백테스트(`backtest/run.py`)가 그대로 공유.
-- **FSD 적용 범위**: Feature-Sliced Design은 **프론트엔드 전용 방법론**이라 `dashboard/`에만 적용한다. `engine/`·`backtest/`(Python)·`supabase/`(SQL)는 FSD 대상이 아니며 기능별 모듈 구조를 따른다.
+- `engine/signals.py`의 판정 함수는 **입력이 가격 시계열, 출력이 층별 boolean+score인 순수 함수**. 라이브 잡(`engine/main.py`)과 백테스트(`engine/backtest/`)가 그대로 공유.
+- **백테스트는 `engine/` 안의 서브패키지**다. `engine.signals`/`indicators` 를 직접 import 하므로 별도 최상위 디렉토리로 두면 경로 해킹이 필요 → 같은 Python 프로젝트(uv)로 합쳐 import 를 깔끔히 유지.
+- **FSD 적용 범위**: Feature-Sliced Design은 **프론트엔드 전용 방법론**이라 `dashboard/`에만 적용한다. `engine/`(Python)·`supabase/`(SQL)는 FSD 대상이 아니며 기능별 모듈 구조를 따른다.
 
 ### 3.1 `dashboard/` — Feature-Sliced Design
 
