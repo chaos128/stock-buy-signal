@@ -60,8 +60,14 @@ def get_active_curated_symbols(client: Client) -> list[dict]:
     return client.table("curated_symbols").select("*").eq("is_active", True).execute().data
 
 
-def insert_signal_snapshot(client: Client, snapshot: dict) -> dict:
-    return client.table("signal_snapshots").insert(snapshot).execute().data[0]
+def upsert_signal_snapshot(client: Client, snapshot: dict) -> dict:
+    # (symbol, captured_at) 유니크 → 같은 날 재실행 시 갱신(멱등)
+    return (
+        client.table("signal_snapshots")
+        .upsert(snapshot, on_conflict="symbol,captured_at")
+        .execute()
+        .data[0]
+    )
 
 
 def _verify_roundtrip() -> None:
@@ -79,7 +85,7 @@ def _verify_roundtrip() -> None:
     snapshot = snapshot_from_signal_row("QQQ", signals.iloc[-1])
     print(f"write snapshot: {snapshot['captured_at']} close={snapshot['close_price']} score={snapshot['score']}")
 
-    inserted = insert_signal_snapshot(client, snapshot)
+    inserted = upsert_signal_snapshot(client, snapshot)
     row_id = inserted["id"]
     read_back = client.table("signal_snapshots").select("*").eq("id", row_id).execute().data[0]
     print(f"read back: close={read_back['close_price']} rsi={read_back['relative_strength_index_14']}")
