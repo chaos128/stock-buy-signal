@@ -113,7 +113,8 @@ stock-buy-signal/
 
 ### 3.1 `dashboard/` — Feature-Sliced Design
 
-레이어(위→아래): **app → pages → widgets → features → entities → shared**.
+레이어(위→아래): **app → views → widgets → features → entities → shared**.
+(FSD 표준의 `pages` 레이어를 Next 충돌 회피 위해 `views`로 rename — 아래 정합 노트 참고.)
 import 규칙: **각 레이어는 자신보다 아래 레이어만 import**. 같은 레이어의 다른 슬라이스끼리는 import 금지.
 `processes`는 deprecated라 쓰지 않는다.
 
@@ -122,9 +123,9 @@ dashboard/src/
   app/                        # Next App Router (라우팅) + FSD app 레이어 흡수
     layout.tsx                # 루트 레이아웃 = FSD app 레이어 역할 (providers·전역 스타일 마운트)
     providers.tsx             # Supabase, TanStack Query, Theme, PWA(service worker) 등록
-    <route>/page.tsx          # 각 라우트 — 얇게, pages 슬라이스만 import
+    <route>/page.tsx          # 각 라우트 — 얇게, views 슬라이스만 import
     globals.css               # 전역 스타일 (Tailwind entry)
-  pages/                      # FSD pages 레이어 (App Router라 Next Pages Router와 충돌 없음)
+  views/                      # 라우트별 조립 화면 (FSD pages 레이어를 rename — 아래 정합 노트)
     login/
     watchlist/                # 구독 종목 개요
     symbol-detail/            # 단일 종목 신호 상세(차트)
@@ -148,17 +149,18 @@ dashboard/src/
     alert/
     backtest/                 # backtest_results
   shared/                     # 프로젝트 비종속 재사용 (슬라이스 없음, 세그먼트만)
-    ui/                       # 프리미티브 (shadcn/ui 등)
-    api/                      # supabase 클라이언트, base query
-    lib/                      # cn, 숫자·날짜 포맷터, lightweight-charts 어댑터
+    ui/                       # shadcn/ui 프리미티브 (base-nova, base-ui, lucide)
+    api/                      # supabase client/server + database.types
+    lib/                      # cn(clsx+tailwind-merge), 포맷터, lightweight-charts 어댑터
     config/                   # env, 상수
 ```
 
 - **슬라이스 안 세그먼트**: `ui`(컴포넌트) / `api`(Supabase 쿼리) / `model`(타입·스토어·쿼리훅) / `lib`(슬라이스 전용 유틸).
 - **FSD ↔ Next App Router 정합** (이름 충돌 처리):
-  - Next가 `src/app/`을 **라우팅**으로 소유. FSD `app` 레이어 책임(providers·전역 스타일)은 `app/layout.tsx` + `app/providers.tsx`로 **흡수** — 별도 FSD `app` 폴더를 두지 않는다.
-  - **App Router 사용**(Pages Router 아님) → `src/pages/`(FSD 레이어)가 Next 라우팅과 충돌하지 않는다.
-  - 각 `app/<route>/page.tsx`는 **얇게** — `pages/` 슬라이스 컴포넌트만 import(라우트 정의 ↔ 화면 조립 분리).
+  - Next가 `src/app/`을 **라우팅**으로 소유. FSD `app` 레이어 책임(providers·전역 스타일)은 `app/layout.tsx`(+`providers.tsx`)로 **흡수** — 별도 FSD `app` 폴더를 두지 않는다.
+  - **FSD `pages` 레이어 → `views` 로 rename.** `src/pages/`가 있으면 Next가 Pages Router로 인식해 슬라이스 파일을 라우트로 오인하기 때문. (앞서 "App Router라 충돌 없음"이라 적었던 건 **오류 — 정정**.)
+  - 각 `app/<route>/page.tsx`는 **얇게** — `views/` 슬라이스 컴포넌트만 import(라우트 정의 ↔ 화면 조립 분리).
+- **shadcn/ui**: 프리미티브는 `shared/ui`(components.json alias 를 FSD로 매핑). new-york 계열 `base-nova` + base-ui + lucide, named export·kebab-case·`data-slot`·`cva`·`cn`·클래스 다크모드(OKLCH). monorepo 컨벤션 참고하되 단일 앱이라 `ui:` 프리픽스·`@repo/ui` 패키지는 안 씀.
 - **데이터·인증**: 초기 데이터는 **서버 컴포넌트**에서 Supabase 서버 클라이언트로 페치(첫 페인트에 데이터 존재), 클라 상호작용은 Supabase browser client(+필요시 TanStack Query). **인증 게이팅은 미들웨어**(`@supabase/ssr`)로 authed 셸을 서버 렌더 → 로그인 플래시 제거.
 - **읽기 위주 앱**이라 entities·widgets가 무게 중심, features는 가벼움(auth·구독·설정 정도). **레이어를 처음부터 다 채우지 말고** 슬라이스는 필요해질 때 추가 — 빈 레이어 남발 금지.
 
