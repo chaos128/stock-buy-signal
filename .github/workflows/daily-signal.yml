@@ -1,0 +1,29 @@
+name: daily-signal
+
+# 미장 마감 후 1회: 신호 계산 → 스냅샷 저장 → 구독자 fan-out → 이메일.
+# 22:00 UTC = 미 동부 18:00(EDT) / 17:00(EST) — 종가/일봉 확정 후.
+# GitHub cron 은 정시 보장 안 됨(수 분 지연 가능) — 일 1회 배치엔 무관.
+# main.py 는 멱등(주말/휴일 실행 시 마지막 거래일 재처리 + 스로틀로 중복 발송 없음).
+on:
+  schedule:
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python main.py

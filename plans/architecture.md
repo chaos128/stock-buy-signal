@@ -22,7 +22,7 @@
 | 신호 로직 위치 | **Python에만 존재** | 대시보드는 Supabase 저장값을 **그리기만** 함 → 로직 이중화 없음 |
 | 신호 계산 단위 | **고유 종목당 1회 (공유)** | QQQ를 N명이 봐도 계산 1번. "신호 계산(종목별)"과 "알림 발송(유저별)" 분리 |
 | 저장소 / 이음새 | **Supabase** | Python 잡이 service-role로 write, 대시보드가 유저 JWT로 RLS read |
-| 스케줄링 | **스케줄 워커 (Fly/Railway cron 또는 Supabase pg_cron)** | GitHub Actions는 개인 스크립트엔 OK지만 서비스엔 부적합(CI 인프라) |
+| 스케줄링 | **베타: GitHub Actions cron** (`.github/workflows/daily-signal.yml`, 평일 22:00 UTC) → 공개/스케일 시 Fly/Railway/Modal 워커 | 일 1회 Python 배치엔 GH Actions가 적합·무료. (Edge Function은 Deno라 Python 엔진과 안 맞음) |
 | 실행 주기 | **1일 1회, 미장 마감 후 (ET 16:30)** | 모든 지표가 종가 기준 → 마감 후에야 값 확정 |
 | 알림 채널 | **이메일 (트랜잭셔널: Resend 등)** | 하루 1회 비긴급. 발송부는 인터페이스로 추상화해 채널 교체 쉽게 |
 | 종목 범위 | **큐레이션된 소수 고정** | 유료 데이터 벤더 회피 → yfinance로 버팀. 유저는 이 목록 안에서 구독 |
