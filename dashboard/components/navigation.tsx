@@ -21,12 +21,20 @@ export function Navigation({ userEmail }: { userEmail: string | null }) {
                 </Link>
               </div>
               {userEmail && (
-                <Link
-                  href="/alerts"
-                  className="hidden text-sm font-medium text-foreground hover:text-primary sm:inline"
-                >
-                  알림 이력
-                </Link>
+                <>
+                  <Link
+                    href="/alerts"
+                    className="hidden text-sm font-medium text-foreground hover:text-primary sm:inline"
+                  >
+                    알림 이력
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="hidden text-sm font-medium text-foreground hover:text-primary sm:inline"
+                  >
+                    설정
+                  </Link>
+                </>
               )}
             </div>
 
