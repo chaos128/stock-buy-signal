@@ -57,9 +57,9 @@ def snapshot_from_signal_row(symbol: str, row: pd.Series) -> dict:
 
 
 def build_indicator_series(
-    ohlc: pd.DataFrame, signals: pd.DataFrame, lookback: int = 250
+    ohlc: pd.DataFrame, signals: pd.DataFrame, lookback: int = 1260
 ) -> list[dict]:
-    """최근 lookback 봉의 OHLC + 지표를 차트용 리스트로. (signal_snapshots.indicator_series)"""
+    """최근 lookback 봉(기본 ≈5거래년)의 OHLC + 지표를 차트용 리스트로. (signal_snapshots.indicator_series)"""
     tail = signals.tail(lookback)
     series: list[dict] = []
     for date, row in tail.iterrows():

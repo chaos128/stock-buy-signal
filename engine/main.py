@@ -38,8 +38,9 @@ def run() -> None:
         symbol = symbol_row["symbol"]
         context_symbol = symbol_row.get("market_context_symbol")
 
-        ohlc = get_daily_ohlc(symbol, "2y")
-        context = get_daily_ohlc(context_symbol, "2y") if context_symbol else None
+        # 차트 indicator_series 가 5년(1260봉) + SMA200 워밍업을 담으려면 넉넉히 fetch.
+        ohlc = get_daily_ohlc(symbol, "10y")
+        context = get_daily_ohlc(context_symbol, "10y") if context_symbol else None
         signals = compute_signals(ohlc, context)
         atr = average_true_range(ohlc)
 
