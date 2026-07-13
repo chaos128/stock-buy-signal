@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import type { WatchlistItem } from "../_actions/watchlist-actions";
+import { SubscribeToggle } from "./subscribe-toggle";
 
 export function Watchlist({ items }: { items: WatchlistItem[] }) {
   if (items.length === 0) {
@@ -26,12 +27,15 @@ export function Watchlist({ items }: { items: WatchlistItem[] }) {
               <span className="text-sm font-semibold text-primary">score {item.score}</span>
             )}
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {item.closePrice !== null
-              ? `종가 ${item.closePrice.toFixed(2)} · ${
-                  item.capturedAt ? new Date(item.capturedAt).toLocaleDateString() : "-"
-                }`
-              : "데이터 없음"}
+          <CardContent className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              {item.closePrice !== null
+                ? `종가 ${item.closePrice.toFixed(2)} · ${
+                    item.capturedAt ? new Date(item.capturedAt).toLocaleDateString() : "-"
+                  }`
+                : "데이터 없음"}
+            </span>
+            <SubscribeToggle symbol={item.symbol} isSubscribed={item.isSubscribed} />
           </CardContent>
         </Card>
       ))}

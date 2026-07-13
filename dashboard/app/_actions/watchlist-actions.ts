@@ -8,6 +8,7 @@ export interface WatchlistItem {
   score: number | null;
   closePrice: number | null;
   capturedAt: string | null;
+  isSubscribed: boolean;
 }
 
 export type WatchlistResult =
@@ -34,6 +35,16 @@ export async function getWatchlist(): Promise<WatchlistResult> {
     return { success: false, error: snapshotsError.message };
   }
 
+  // 현재 유저의 활성 구독 (RLS 로 본인 것만 반환)
+  const { data: subscriptions, error: subscriptionsError } = await supabase
+    .from("subscriptions")
+    .select("symbol")
+    .eq("is_active", true);
+  if (subscriptionsError) {
+    return { success: false, error: subscriptionsError.message };
+  }
+  const subscribedSymbols = new Set((subscriptions ?? []).map((row) => row.symbol));
+
   const latestBySymbol = new Map<string, NonNullable<typeof snapshots>[number]>();
   for (const snapshot of snapshots ?? []) {
     if (!latestBySymbol.has(snapshot.symbol)) {
@@ -49,6 +60,7 @@ export async function getWatchlist(): Promise<WatchlistResult> {
       score: latest?.score ?? null,
       closePrice: latest?.close_price ?? null,
       capturedAt: latest?.captured_at ?? null,
+      isSubscribed: subscribedSymbols.has(symbol.symbol),
     };
   });
 
