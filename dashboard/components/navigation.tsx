@@ -11,13 +11,23 @@ export function Navigation({ userEmail }: { userEmail: string | null }) {
       <nav className="fixed z-50 w-full border-b border-border bg-card">
         <div className="px-4 py-4 md:px-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <TrendingUp className="h-5 w-5 text-primary-foreground" />
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <TrendingUp className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <Link href="/" className="text-xl font-semibold text-foreground">
+                  매수 신호
+                </Link>
               </div>
-              <Link href="/" className="text-xl font-semibold text-foreground">
-                매수 신호
-              </Link>
+              {userEmail && (
+                <Link
+                  href="/alerts"
+                  className="hidden text-sm font-medium text-foreground hover:text-primary sm:inline"
+                >
+                  알림 이력
+                </Link>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
