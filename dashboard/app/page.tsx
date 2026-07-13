@@ -1,9 +1,15 @@
+import { createClient } from "@/api-client/supabase/server";
+
 import { getWatchlist } from "./_actions/watchlist-actions";
 import { Watchlist } from "./_components/watchlist";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const result = await getWatchlist();
 
   return (
@@ -14,7 +20,7 @@ export default async function HomePage() {
       </div>
       <main className="mx-auto max-w-[90rem] px-6 py-6">
         {result.success ? (
-          <Watchlist items={result.data} />
+          <Watchlist items={result.data} isAuthenticated={!!user} />
         ) : (
           <div className="rounded-md border border-border p-8 text-center text-destructive">
             불러오기 실패: {result.error}

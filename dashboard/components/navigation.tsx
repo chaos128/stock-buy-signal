@@ -2,10 +2,10 @@ import { TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 import { signOut } from "@/api-client/auth-actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
-// 상단 고정 navbar (backoffice 셸 패턴). 로그인 상태에서만 layout 이 렌더한다.
-export function Navigation({ userEmail }: { userEmail: string }) {
+// 상단 고정 navbar (backoffice 셸 패턴). 로그인 여부와 무관하게 항상 렌더.
+export function Navigation({ userEmail }: { userEmail: string | null }) {
   return (
     <>
       <nav className="fixed z-50 w-full border-b border-border bg-card">
@@ -21,14 +21,25 @@ export function Navigation({ userEmail }: { userEmail: string }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                {userEmail}
-              </span>
-              <form action={signOut}>
-                <Button type="submit" variant="secondary" size="sm">
-                  로그아웃
-                </Button>
-              </form>
+              {userEmail ? (
+                <>
+                  <span className="hidden text-sm text-muted-foreground sm:inline">
+                    {userEmail}
+                  </span>
+                  <form action={signOut}>
+                    <Button type="submit" variant="secondary" size="sm">
+                      로그아웃
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className={buttonVariants({ variant: "secondary", size: "sm" })}
+                >
+                  로그인
+                </Link>
+              )}
             </div>
           </div>
         </div>

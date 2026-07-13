@@ -5,7 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WatchlistItem } from "../_actions/watchlist-actions";
 import { SubscribeToggle } from "./subscribe-toggle";
 
-export function Watchlist({ items }: { items: WatchlistItem[] }) {
+export function Watchlist({
+  items,
+  isAuthenticated,
+}: {
+  items: WatchlistItem[];
+  isAuthenticated: boolean;
+}) {
   if (items.length === 0) {
     return (
       <div className="rounded-md border border-border p-8 text-center text-muted-foreground">
@@ -39,7 +45,11 @@ export function Watchlist({ items }: { items: WatchlistItem[] }) {
                   }`
                 : "데이터 없음"}
             </span>
-            <SubscribeToggle symbol={item.symbol} isSubscribed={item.isSubscribed} />
+            <SubscribeToggle
+              symbol={item.symbol}
+              isSubscribed={item.isSubscribed}
+              isAuthenticated={isAuthenticated}
+            />
           </CardContent>
         </Card>
       ))}

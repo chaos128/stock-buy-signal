@@ -26,7 +26,7 @@ export default async function RootLayout({
     <html lang="ko" className="dark">
       <body className={poppins.className}>
         <ReactQueryClientProvider>
-          {user && <Navigation userEmail={user.email ?? ""} />}
+          <Navigation userEmail={user?.email ?? null} />
           {children}
         </ReactQueryClientProvider>
       </body>
