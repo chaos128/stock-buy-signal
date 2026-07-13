@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 
-import { updateSession } from "@/shared/api/supabase/middleware";
+import { updateSession } from "@/api-client/supabase/middleware";
 
 // Next 16: "middleware" 규약이 "proxy" 로 rename 됨.
 export async function proxy(request: NextRequest) {

@@ -1,13 +1,14 @@
-import { LoginForm } from "@/features/auth";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/shared/ui/card";
+} from "@/components/ui/card";
 
-export function LoginView() {
+import { LoginForm } from "./_components/login-form";
+
+export default function LoginPage() {
   return (
     <main className="flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">

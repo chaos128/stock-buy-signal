@@ -1,17 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { createClient } from "@/shared/api/supabase/client";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { createClient } from "@/api-client/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Mode = "signin" | "signup";
 
 export function LoginForm() {
-  const router = useRouter();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,8 +27,7 @@ export function LoginForm() {
       if (error) {
         setMessage(error.message);
       } else {
-        router.refresh();
-        router.push("/");
+        window.location.href = "/";
       }
     } else {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -38,8 +35,7 @@ export function LoginForm() {
         setMessage(error.message);
       } else if (data.session) {
         // 이메일 확인 꺼짐 → 즉시 로그인
-        router.refresh();
-        router.push("/");
+        window.location.href = "/";
       } else {
         setMessage("확인 이메일을 보냈어요. 메일의 링크로 인증한 뒤 로그인하세요.");
       }

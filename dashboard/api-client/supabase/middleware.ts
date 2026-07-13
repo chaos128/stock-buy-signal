@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import type { Database } from "@/shared/api/database.types";
+import type { Database } from "@/api-client/supabase/database.types";
 
 // 요청마다 세션 갱신 + 라우트 게이팅. 미들웨어는 request/response 쿠키를 직접 다뤄야 해서
 // server.ts(next/headers cookies) 와 별도 구현.

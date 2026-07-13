@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-import type { Database } from "@/shared/api/database.types";
+import type { Database } from "@/api-client/supabase/database.types";
 
 // 서버(서버 컴포넌트/route handler/미들웨어)용 Supabase 클라이언트. 쿠키로 세션 유지.
 export async function createClient() {
