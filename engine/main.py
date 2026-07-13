@@ -17,6 +17,7 @@ from notify import send_alert_email
 from risk import compute_risk_levels
 from signals import compute_signals
 from store import (
+    build_indicator_series,
     get_active_curated_symbols,
     get_client,
     snapshot_from_signal_row,
@@ -47,6 +48,7 @@ def run() -> None:
         today = last.name.date()
 
         snapshot = snapshot_from_signal_row(symbol, last)
+        snapshot["indicator_series"] = build_indicator_series(ohlc, signals)
         upsert_signal_snapshot(client, snapshot)
 
         risk = compute_risk_levels(

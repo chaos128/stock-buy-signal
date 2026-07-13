@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import type { WatchlistItem } from "../_actions/watchlist-actions";
@@ -18,7 +20,9 @@ export function Watchlist({ items }: { items: WatchlistItem[] }) {
         <Card key={item.symbol}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base">
-              {item.symbol}{" "}
+              <Link href={`/symbol/${item.symbol}`} className="hover:text-primary hover:underline">
+                {item.symbol}
+              </Link>{" "}
               <span className="text-sm font-normal text-muted-foreground">
                 {item.displayName}
               </span>

@@ -56,6 +56,31 @@ def snapshot_from_signal_row(symbol: str, row: pd.Series) -> dict:
     }
 
 
+def build_indicator_series(
+    ohlc: pd.DataFrame, signals: pd.DataFrame, lookback: int = 250
+) -> list[dict]:
+    """최근 lookback 봉의 OHLC + 지표를 차트용 리스트로. (signal_snapshots.indicator_series)"""
+    tail = signals.tail(lookback)
+    series: list[dict] = []
+    for date, row in tail.iterrows():
+        bar = ohlc.loc[date]
+        series.append(
+            {
+                "date": pd.Timestamp(date).strftime("%Y-%m-%d"),
+                "open": _number(bar["open"]),
+                "high": _number(bar["high"]),
+                "low": _number(bar["low"]),
+                "close": _number(row["close"]),
+                "bollinger_lower": _number(row["bollinger_lower"]),
+                "bollinger_middle": _number(row["bollinger_middle"]),
+                "bollinger_upper": _number(row["bollinger_upper"]),
+                "rsi": _number(row["rsi"]),
+                "market_context_close": _number(row["market_context_close"]),
+            }
+        )
+    return series
+
+
 def get_active_curated_symbols(client: Client) -> list[dict]:
     return client.table("curated_symbols").select("*").eq("is_active", True).execute().data
 
