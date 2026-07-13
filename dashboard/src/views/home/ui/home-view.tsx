@@ -35,7 +35,7 @@ export async function HomeView() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
           <form action={signOut}>
-            <Button variant="outline" size="sm">
+            <Button type="submit" variant="outline" size="sm">
               로그아웃
             </Button>
           </form>
