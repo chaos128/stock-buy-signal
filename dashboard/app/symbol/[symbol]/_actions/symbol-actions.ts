@@ -13,6 +13,11 @@ export interface IndicatorBar {
   bollinger_upper: number | null;
   rsi: number | null;
   market_context_close: number | null;
+  market_context_ma: number | null;
+  trend_gate_passed: boolean;
+  pullback_signal: boolean;
+  market_regime_signal: boolean;
+  score: number;
 }
 
 export interface SymbolDetail {

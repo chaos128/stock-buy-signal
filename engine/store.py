@@ -76,6 +76,11 @@ def build_indicator_series(
                 "bollinger_upper": _number(row["bollinger_upper"]),
                 "rsi": _number(row["rsi"]),
                 "market_context_close": _number(row["market_context_close"]),
+                "market_context_ma": _number(row["market_context_ma"]),
+                "trend_gate_passed": bool(row["trend_gate_passed"]),
+                "pullback_signal": bool(row["pullback_signal"]),
+                "market_regime_signal": bool(row["market_regime_signal"]),
+                "score": int(row["score"]),
             }
         )
     return series
