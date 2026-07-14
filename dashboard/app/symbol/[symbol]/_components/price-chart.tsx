@@ -69,10 +69,18 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     const lower = priceChart.addSeries(LineSeries, { ...bandOptions, color: "rgba(56,189,248,0.45)" });
     lower.setData(bars.filter((b) => b.bollinger_lower != null).map((b) => line(b, b.bollinger_lower)));
 
-    // 신호일 마커: 추세 게이트 통과 & score>=2 (알림 발송 조건)
-    const markers: SeriesMarker<Time>[] = bars
-      .filter((bar) => bar.trend_gate_passed && bar.score >= 2)
-      .map((bar) => ({ time: bar.date as Time, position: "belowBar", color: "#0ea5e9", shape: "arrowUp" }));
+    // 2단 마커 (시간순): ▲파랑=신호(게이트↑ & score>=2, 발송) / ●주황=과매도 딥(게이트↓, 고위험·미발송)
+    const markers: SeriesMarker<Time>[] = [];
+    for (const bar of bars) {
+      if (bar.score < 2) {
+        continue;
+      }
+      if (bar.trend_gate_passed) {
+        markers.push({ time: bar.date as Time, position: "belowBar", color: "#0ea5e9", shape: "arrowUp" });
+      } else {
+        markers.push({ time: bar.date as Time, position: "aboveBar", color: "#f59e0b", shape: "circle" });
+      }
+    }
     createSeriesMarkers(candles, markers);
     priceChart.timeScale().fitContent();
 
@@ -101,7 +109,8 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   return (
     <div className="space-y-2">
       <div className="text-xs text-muted-foreground">
-        캔들 + 볼린저밴드(파란선) · <span className="text-primary">▲ 파란 화살표 = 신호일</span>(게이트 통과 + score≥2)
+        캔들 + 볼린저밴드(파란선) · <span className="text-primary">▲ 신호</span>(추세↑ + score≥2, 발송) ·{" "}
+        <span className="text-amber-500">● 과매도 딥</span>(추세↓, 고위험·미발송)
       </div>
       <div ref={priceRef} className="h-[360px] w-full" />
       <div className="text-xs text-muted-foreground">RSI(14) · 40 기준선</div>
