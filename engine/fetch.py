@@ -17,4 +17,8 @@ def get_daily_ohlc(symbol: str, period: str = "2y") -> pd.DataFrame:
     # 인덱스를 tz-naive 날짜로 정규화. yfinance 는 심볼(주식 vs 지수)마다 타임존/시각이
     # 달라 서로 다른 심볼을 reindex 로 맞출 때 어긋난다. 날짜 기준으로 통일해 정렬 보장.
     frame.index = pd.to_datetime(frame.index.date)
+    # yfinance 는 현재/미완성 봉을 종가 NaN 행으로 덧붙일 때가 있음(장중·데이터 지연).
+    # 종가 없는 행은 완성된 거래봉이 아니므로 제거 → 마지막 행이 항상 완성 거래일이 되게
+    # (안 그러면 iloc[-1] 스냅샷이 close/score 전부 null 로 잡힘).
+    frame = frame.dropna(subset=["close"])
     return frame
