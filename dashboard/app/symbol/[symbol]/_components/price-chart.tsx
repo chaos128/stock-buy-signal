@@ -14,9 +14,11 @@ import { useEffect, useRef } from "react";
 
 import type { IndicatorBar } from "../_actions/symbol-actions";
 
-// 단일 차트 + 3 pane (캔들+BB / RSI / VIX). 하나의 시간축을 공유 → pan/zoom 자동 동기화.
+// 단일 차트 + 3 pane (캔들+BB / RSI / VIX). 시간축 공유 → pan/zoom 동기화.
+// hover 시 crosshair 위치의 값을 상단 legend 한 곳에 모아 표시.
 export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const legendRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -67,7 +69,6 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     const lower = chart.addSeries(LineSeries, { ...bandOptions, color: "rgba(56,189,248,0.45)" });
     lower.setData(bars.filter((b) => b.bollinger_lower != null).map((b) => line(b, b.bollinger_lower)));
 
-    // 2단 마커: ▲파랑=신호(게이트↑ & score>=2) / ●주황=과매도 딥(게이트↓)
     const markers: SeriesMarker<Time>[] = [];
     for (const bar of bars) {
       if (bar.score < 2) {
@@ -81,24 +82,57 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     }
     createSeriesMarkers(candles, markers);
 
-    // --- pane 1: RSI (+40 기준선) ---
+    // --- pane 1: RSI ---
     const rsiSeries = chart.addSeries(LineSeries, { color: "#eab308", lineWidth: 1, priceLineVisible: false }, 1);
     rsiSeries.setData(bars.filter((b) => b.rsi != null).map((b) => line(b, b.rsi)));
     rsiSeries.createPriceLine({ price: 40, color: "rgba(239,68,68,0.6)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "40" });
 
-    // --- pane 2: VIX (종가 + 20일선) ---
+    // --- pane 2: VIX ---
     const vixSeries = chart.addSeries(LineSeries, { color: "#f97316", lineWidth: 1, priceLineVisible: false }, 2);
     vixSeries.setData(bars.filter((b) => b.market_context_close != null).map((b) => line(b, b.market_context_close)));
     const vixMa = chart.addSeries(LineSeries, { ...bandOptions, color: "rgba(249,115,22,0.5)", lineStyle: LineStyle.Dashed }, 2);
     vixMa.setData(bars.filter((b) => b.market_context_ma != null).map((b) => line(b, b.market_context_ma)));
 
-    // pane 높이 비율: 가격 3 : RSI 1 : VIX 1
     const panes = chart.panes();
     panes[0]?.setStretchFactor(3);
     panes[1]?.setStretchFactor(1);
     panes[2]?.setStretchFactor(1);
-
     chart.timeScale().fitContent();
+
+    // --- 통합 legend (crosshair hover) ---
+    const barByDate = new Map(bars.map((b) => [b.date, b]));
+    const fmt = (v: number | null) => (v == null ? "-" : v.toFixed(2));
+    const renderLegend = (bar: IndicatorBar | undefined) => {
+      if (!legendRef.current || !bar) {
+        return;
+      }
+      const tag =
+        bar.score >= 2
+          ? bar.trend_gate_passed
+            ? '<span style="color:#0ea5e9">▲ 신호</span>'
+            : '<span style="color:#f59e0b">● 과매도 딥</span>'
+          : "";
+      legendRef.current.innerHTML =
+        `<span style="color:#8a8a8a">${bar.date}</span>&nbsp;&nbsp;` +
+        `종가 <b>${fmt(bar.close)}</b>&nbsp;&nbsp;` +
+        `<span style="color:#38bdf8">BB ${fmt(bar.bollinger_lower)} / ${fmt(bar.bollinger_middle)} / ${fmt(bar.bollinger_upper)}</span>&nbsp;&nbsp;` +
+        `<span style="color:#eab308">RSI ${fmt(bar.rsi)}</span>&nbsp;&nbsp;` +
+        `<span style="color:#f97316">VIX ${fmt(bar.market_context_close)}</span>&nbsp;&nbsp;${tag}`;
+    };
+    const lastBar = bars[bars.length - 1];
+    renderLegend(lastBar);
+
+    chart.subscribeCrosshairMove((param) => {
+      const time = param.time as unknown;
+      let key: string | null = null;
+      if (typeof time === "string") {
+        key = time;
+      } else if (time && typeof time === "object" && "year" in time) {
+        const businessDay = time as { year: number; month: number; day: number };
+        key = `${businessDay.year}-${String(businessDay.month).padStart(2, "0")}-${String(businessDay.day).padStart(2, "0")}`;
+      }
+      renderLegend((key && barByDate.get(key)) || lastBar);
+    });
 
     return () => {
       chart.remove();
@@ -107,8 +141,9 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
 
   return (
     <div className="space-y-2">
+      <div ref={legendRef} className="text-sm font-medium text-foreground" />
       <div className="text-xs text-muted-foreground">
-        캔들+볼린저밴드 · <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
+        캔들+BB · <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
         <span className="text-amber-500">● 과매도 딥</span>(추세↓) · 중단 RSI(14, 40선) · 하단 VIX(+20일선)
       </div>
       <div ref={containerRef} className="h-[560px] w-full" />
