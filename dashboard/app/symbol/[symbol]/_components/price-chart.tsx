@@ -7,21 +7,57 @@ import {
   LineStyle,
   createChart,
   createSeriesMarkers,
+  type IChartApi,
   type SeriesMarker,
   type Time,
 } from "lightweight-charts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { cn } from "@/lib/utils";
 import type { IndicatorBar } from "../_actions/symbol-actions";
+
+type RangeKey = "3M" | "YTD" | "1Y" | "3Y" | "5Y";
+const RANGE_KEYS: RangeKey[] = ["3M", "YTD", "1Y", "3Y", "5Y"];
+
+// 마지막 봉 날짜 기준으로 선택 기간만큼 뺀 시작 날짜(YYYY-MM-DD).
+function rangeFromDate(lastDate: string, range: RangeKey): string {
+  const [year, month, day] = lastDate.split("-").map(Number);
+  const toIso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+  switch (range) {
+    case "3M":
+      return toIso(year, month - 3, day);
+    case "YTD":
+      return `${year}-01-01`;
+    case "1Y":
+      return toIso(year - 1, month, day);
+    case "3Y":
+      return toIso(year - 3, month, day);
+    case "5Y":
+      return toIso(year - 5, month, day);
+  }
+}
+
+// 보이는 구간을 [기간 시작, 마지막 봉]으로. 시작이 데이터보다 이르면 첫 봉으로 clamp.
+function applyVisibleRange(chart: IChartApi, bars: IndicatorBar[], range: RangeKey) {
+  const lastDate = bars[bars.length - 1].date;
+  const firstDate = bars[0].date;
+  const from = rangeFromDate(lastDate, range);
+  chart.timeScale().setVisibleRange({
+    from: (from < firstDate ? firstDate : from) as Time,
+    to: lastDate as Time,
+  });
+}
 
 // 단일 차트 + 3 pane (캔들+BB / RSI / VIX). 시간축 공유 → pan/zoom 동기화.
 // hover 시 crosshair 위치의 값을 커서 옆 floating tooltip 한 곳에 모아 표시.
 export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const [activeRange, setActiveRange] = useState<RangeKey>("1Y");
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!containerRef.current || bars.length === 0) {
       return;
     }
 
@@ -97,7 +133,8 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     panes[0]?.setStretchFactor(3);
     panes[1]?.setStretchFactor(1);
     panes[2]?.setStretchFactor(1);
-    chart.timeScale().fitContent();
+    chartRef.current = chart;
+    applyVisibleRange(chart, bars, "1Y"); // 기본 표시 구간
 
     // --- floating tooltip (crosshair hover) ---
     const barByDate = new Map(bars.map((b) => [b.date, b]));
@@ -169,6 +206,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
 
     return () => {
       chart.remove();
+      chartRef.current = null;
     };
   }, [bars]);
 
@@ -177,6 +215,28 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       <div className="text-xs text-muted-foreground">
         캔들+BB · <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
         <span className="text-amber-500">● 과매도 딥</span>(추세↓) · 중단 RSI(14, 40선) · 하단 VIX(+20일선)
+      </div>
+      <div className="flex items-center gap-1">
+        {RANGE_KEYS.map((range) => (
+          <button
+            key={range}
+            type="button"
+            onClick={() => {
+              if (chartRef.current) {
+                applyVisibleRange(chartRef.current, bars, range);
+              }
+              setActiveRange(range);
+            }}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              activeRange === range
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {range}
+          </button>
+        ))}
       </div>
       <div className="relative">
         <div ref={containerRef} className="h-[560px] w-full" />
