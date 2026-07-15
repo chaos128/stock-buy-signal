@@ -52,6 +52,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       },
       rightPriceScale: { borderColor: "rgba(255,255,255,0.12)" },
       timeScale: { borderColor: "rgba(255,255,255,0.12)" },
+      handleScale: { mouseWheel: false }, // 휠 스크롤 줌 비활성(드래그 팬·핀치·기간버튼은 유지)
       autoSize: true,
     });
 
