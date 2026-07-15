@@ -8,6 +8,7 @@ export interface IndicatorBar {
   high: number | null;
   low: number | null;
   close: number | null;
+  simple_moving_average_200: number | null;
   bollinger_lower: number | null;
   bollinger_middle: number | null;
   bollinger_upper: number | null;

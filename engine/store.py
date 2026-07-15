@@ -71,6 +71,7 @@ def build_indicator_series(
                 "high": _number(bar["high"]),
                 "low": _number(bar["low"]),
                 "close": _number(row["close"]),
+                "simple_moving_average_200": _number(row["sma_trend"]),
                 "bollinger_lower": _number(row["bollinger_lower"]),
                 "bollinger_middle": _number(row["bollinger_middle"]),
                 "bollinger_upper": _number(row["bollinger_upper"]),

@@ -98,6 +98,10 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
           close: bar.close as number,
         })),
     );
+    // 추세 게이트 기준선(200일선) — 종가가 이 선 위=파랑 / 아래=주황. BB(얇은 하늘색)와 구분되게 보라·굵게.
+    const trendGate = chart.addSeries(LineSeries, { color: "#a78bfa", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+    trendGate.setData(bars.filter((b) => b.simple_moving_average_200 != null).map((b) => line(b, b.simple_moving_average_200)));
+
     const upper = chart.addSeries(LineSeries, { ...bandOptions, color: "rgba(56,189,248,0.45)" });
     upper.setData(bars.filter((b) => b.bollinger_upper != null).map((b) => line(b, b.bollinger_upper)));
     const middle = chart.addSeries(LineSeries, { ...bandOptions, color: "rgba(56,189,248,0.9)", lineStyle: LineStyle.Dashed });
@@ -149,6 +153,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       return (
         `<div style="color:#8a8a8a;margin-bottom:2px">${bar.date}</div>` +
         `<div>종가 <b>${fmt(bar.close)}</b></div>` +
+        `<div style="color:#a78bfa">200일선 ${fmt(bar.simple_moving_average_200)}</div>` +
         `<div style="color:#38bdf8">BB ${fmt(bar.bollinger_lower)} / ${fmt(bar.bollinger_middle)} / ${fmt(bar.bollinger_upper)}</div>` +
         `<div style="color:#eab308">RSI ${fmt(bar.rsi)}</div>` +
         `<div style="color:#f97316">VIX ${fmt(bar.market_context_close)}</div>` +
@@ -213,7 +218,8 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   return (
     <div className="space-y-2">
       <div className="text-xs text-muted-foreground">
-        캔들+BB · <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
+        캔들+BB · <span style={{ color: "#a78bfa" }}>200일선(추세 게이트)</span> ·{" "}
+        <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
         <span className="text-amber-500">● 과매도 딥</span>(추세↓) · 중단 RSI(14, 40선) · 하단 VIX(+20일선)
       </div>
       <div className="flex items-center gap-1">
