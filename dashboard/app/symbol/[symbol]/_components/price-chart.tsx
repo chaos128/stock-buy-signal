@@ -15,10 +15,10 @@ import { useEffect, useRef } from "react";
 import type { IndicatorBar } from "../_actions/symbol-actions";
 
 // 단일 차트 + 3 pane (캔들+BB / RSI / VIX). 시간축 공유 → pan/zoom 동기화.
-// hover 시 crosshair 위치의 값을 상단 legend 한 곳에 모아 표시.
+// hover 시 crosshair 위치의 값을 커서 옆 floating tooltip 한 곳에 모아 표시.
 export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const legendRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -99,30 +99,39 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     panes[2]?.setStretchFactor(1);
     chart.timeScale().fitContent();
 
-    // --- 통합 legend (crosshair hover) ---
+    // --- floating tooltip (crosshair hover) ---
     const barByDate = new Map(bars.map((b) => [b.date, b]));
     const fmt = (v: number | null) => (v == null ? "-" : v.toFixed(2));
-    const renderLegend = (bar: IndicatorBar | undefined) => {
-      if (!legendRef.current || !bar) {
-        return;
-      }
+    const renderTooltip = (bar: IndicatorBar) => {
       const tag =
         bar.score >= 2
           ? bar.trend_gate_passed
-            ? '<span style="color:#0ea5e9">▲ 신호</span>'
-            : '<span style="color:#f59e0b">● 과매도 딥</span>'
+            ? '<div style="color:#0ea5e9">▲ 신호</div>'
+            : '<div style="color:#f59e0b">● 과매도 딥</div>'
           : "";
-      legendRef.current.innerHTML =
-        `<span style="color:#8a8a8a">${bar.date}</span>&nbsp;&nbsp;` +
-        `종가 <b>${fmt(bar.close)}</b>&nbsp;&nbsp;` +
-        `<span style="color:#38bdf8">BB ${fmt(bar.bollinger_lower)} / ${fmt(bar.bollinger_middle)} / ${fmt(bar.bollinger_upper)}</span>&nbsp;&nbsp;` +
-        `<span style="color:#eab308">RSI ${fmt(bar.rsi)}</span>&nbsp;&nbsp;` +
-        `<span style="color:#f97316">VIX ${fmt(bar.market_context_close)}</span>&nbsp;&nbsp;${tag}`;
+      return (
+        `<div style="color:#8a8a8a;margin-bottom:2px">${bar.date}</div>` +
+        `<div>종가 <b>${fmt(bar.close)}</b></div>` +
+        `<div style="color:#38bdf8">BB ${fmt(bar.bollinger_lower)} / ${fmt(bar.bollinger_middle)} / ${fmt(bar.bollinger_upper)}</div>` +
+        `<div style="color:#eab308">RSI ${fmt(bar.rsi)}</div>` +
+        `<div style="color:#f97316">VIX ${fmt(bar.market_context_close)}</div>` +
+        tag
+      );
     };
-    const lastBar = bars[bars.length - 1];
-    renderLegend(lastBar);
 
     chart.subscribeCrosshairMove((param) => {
+      const tooltip = tooltipRef.current;
+      const container = containerRef.current;
+      if (!tooltip || !container) {
+        return;
+      }
+      const point = param.point;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      if (!param.time || !point || point.x < 0 || point.x > containerWidth || point.y < 0 || point.y > containerHeight) {
+        tooltip.classList.add("hidden");
+        return;
+      }
       const time = param.time as unknown;
       let key: string | null = null;
       if (typeof time === "string") {
@@ -131,7 +140,31 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
         const businessDay = time as { year: number; month: number; day: number };
         key = `${businessDay.year}-${String(businessDay.month).padStart(2, "0")}-${String(businessDay.day).padStart(2, "0")}`;
       }
-      renderLegend((key && barByDate.get(key)) || lastBar);
+      const bar = key ? barByDate.get(key) : undefined;
+      if (!bar) {
+        tooltip.classList.add("hidden");
+        return;
+      }
+      tooltip.classList.remove("hidden");
+      tooltip.innerHTML = renderTooltip(bar);
+
+      const margin = 12;
+      let left = point.x + margin;
+      if (left + tooltip.clientWidth > containerWidth) {
+        left = point.x - margin - tooltip.clientWidth;
+      }
+      if (left < 0) {
+        left = margin;
+      }
+      let top = point.y + margin;
+      if (top + tooltip.clientHeight > containerHeight) {
+        top = containerHeight - tooltip.clientHeight - margin;
+      }
+      if (top < 0) {
+        top = margin;
+      }
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     });
 
     return () => {
@@ -141,12 +174,17 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
 
   return (
     <div className="space-y-2">
-      <div ref={legendRef} className="text-sm font-medium text-foreground" />
       <div className="text-xs text-muted-foreground">
         캔들+BB · <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
         <span className="text-amber-500">● 과매도 딥</span>(추세↓) · 중단 RSI(14, 40선) · 하단 VIX(+20일선)
       </div>
-      <div ref={containerRef} className="h-[560px] w-full" />
+      <div className="relative">
+        <div ref={containerRef} className="h-[560px] w-full" />
+        <div
+          ref={tooltipRef}
+          className="pointer-events-none absolute left-0 top-0 z-10 hidden whitespace-nowrap rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs leading-relaxed shadow-md backdrop-blur"
+        />
+      </div>
     </div>
   );
 }
