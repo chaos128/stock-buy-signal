@@ -31,6 +31,9 @@ function applyVisibleRange(chart: IChartApi, bars: IndicatorBar[], range: RangeK
 export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const pane0LabelRef = useRef<HTMLDivElement>(null);
+  const pane1LabelRef = useRef<HTMLDivElement>(null);
+  const pane2LabelRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [activeRange, setActiveRange] = useState<RangeKey>("1Y");
   const [investmentAmount, setInvestmentAmount] = useState(100_000_000);
@@ -120,6 +123,19 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     chartRef.current = chart;
     applyVisibleRange(chart, bars, "1Y"); // 기본 표시 구간
 
+    // 각 pane 좌상단 라벨을 pane 높이에 맞춰 배치(pane0 은 top:6 고정).
+    const positionPaneLabels = () => {
+      const heights = chart.panes().map((pane) => pane.getHeight());
+      if (pane1LabelRef.current) {
+        pane1LabelRef.current.style.top = `${heights[0] + 6}px`;
+      }
+      if (pane2LabelRef.current) {
+        pane2LabelRef.current.style.top = `${heights[0] + heights[1] + 6}px`;
+      }
+    };
+    positionPaneLabels();
+    const paneLabelRaf = requestAnimationFrame(positionPaneLabels);
+
     // --- floating tooltip (crosshair hover) ---
     const barByDate = new Map(bars.map((b) => [b.date, b]));
     const fmt = (v: number | null) => (v == null ? "-" : v.toFixed(2));
@@ -190,6 +206,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     });
 
     return () => {
+      cancelAnimationFrame(paneLabelRaf);
       chart.remove();
       chartRef.current = null;
     };
@@ -197,10 +214,17 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-muted-foreground">
-        캔들+BB · <span style={{ color: "#a78bfa" }}>200일선(추세 게이트)</span> ·{" "}
-        <span className="text-primary">▲ 신호</span>(추세↑+score≥2) /{" "}
-        <span className="text-amber-500">● 과매도 딥</span>(추세↓) · 중단 RSI(14, 40선) · 하단 VIX(+20일선)
+      <div className="flex flex-col gap-y-1 text-xs text-muted-foreground md:flex-row md:flex-wrap md:items-center md:gap-x-3 md:gap-y-0">
+        <span>캔들 + BB</span>
+        <span style={{ color: "#a78bfa" }}>200일선(추세 게이트)</span>
+        <span>
+          <span className="text-primary">▲ 신호</span>(추세↑ + score≥2)
+        </span>
+        <span>
+          <span className="text-amber-500">● 과매도 딥</span>(추세↓)
+        </span>
+        <span>중단: RSI(14, 40선)</span>
+        <span>하단: VIX(+20일선)</span>
       </div>
       <div className="flex items-center gap-1">
         {RANGE_KEYS.map((range) => (
@@ -225,18 +249,41 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
         ))}
       </div>
       <div className="relative">
+        <div
+          ref={pane0LabelRef}
+          className="pointer-events-none absolute left-2 z-10 text-[11px] font-medium text-muted-foreground"
+          style={{ top: 6 }}
+        >
+          가격 · BB · 200일선
+        </div>
+        <div
+          ref={pane1LabelRef}
+          className="pointer-events-none absolute left-2 z-10 text-[11px] font-medium"
+          style={{ top: 6, color: "#eab308" }}
+        >
+          RSI(14)
+        </div>
+        <div
+          ref={pane2LabelRef}
+          className="pointer-events-none absolute left-2 z-10 text-[11px] font-medium"
+          style={{ top: 6, color: "#f97316" }}
+        >
+          VIX
+        </div>
         <div ref={containerRef} className="h-[560px] w-full" />
         <div
           ref={tooltipRef}
           className="pointer-events-none absolute left-0 top-0 z-10 hidden whitespace-nowrap rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs leading-relaxed shadow-md backdrop-blur"
         />
       </div>
-      <InvestmentComparison
-        bars={bars}
-        activeRange={activeRange}
-        amount={investmentAmount}
-        onAmountChange={setInvestmentAmount}
-      />
+      <div className="pt-6">
+        <InvestmentComparison
+          bars={bars}
+          activeRange={activeRange}
+          amount={investmentAmount}
+          onAmountChange={setInvestmentAmount}
+        />
+      </div>
     </div>
   );
 }
