@@ -42,12 +42,13 @@ export async function createClient() {
   );
 }
 
-// 현재 유저 조회 — React cache 로 한 요청 내 중복 호출(레이아웃+페이지)을 1회로 dedupe.
-// (auth.getUser 는 매번 Supabase auth 서버 검증 왕복이라 중복 제거 효과가 큼)
-export const getCurrentUser = cache(async () => {
+// 표시/게이트용 현재 유저 — getSession(쿠키 로컬 읽기, 네트워크 왕복 없음)을 React cache 로.
+// authoritative 검증은 미들웨어의 getUser(매 요청 세션 검증·갱신) + DB RLS(JWT 서명 검증)가 담당.
+// 이 함수는 navbar 표시 / "로그인 여부" 게이트 같은 비보안 용도 전용이라 getSession 으로 충분.
+export const getSessionUser = cache(async () => {
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user ?? null;
 });

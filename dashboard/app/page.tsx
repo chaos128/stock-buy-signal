@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/api-client/supabase/server";
+import { getSessionUser } from "@/api-client/supabase/server";
 
 import { getWatchlist } from "./_actions/watchlist-actions";
 import { Watchlist } from "./_components/watchlist";
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
   const result = await getWatchlist();
 
   return (

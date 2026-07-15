@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient, getCurrentUser } from "@/api-client/supabase/server";
+import { createClient, getSessionUser } from "@/api-client/supabase/server";
 
 export interface AlertRow {
   id: string;
@@ -23,7 +23,7 @@ export type AlertsResult =
   | { authenticated: true; success: false; error: string };
 
 export async function getAlerts(): Promise<AlertsResult> {
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
   if (!user) {
     return { authenticated: false };
   }

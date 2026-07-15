@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient, getCurrentUser } from "@/api-client/supabase/server";
+import { createClient, getSessionUser } from "@/api-client/supabase/server";
 
 export interface SubscriptionSetting {
   id: string;
@@ -17,7 +17,7 @@ export type SettingsResult =
   | { authenticated: true; success: false; error: string };
 
 export async function getSubscriptionSettings(): Promise<SettingsResult> {
-  const user = await getCurrentUser();
+  const user = await getSessionUser();
   if (!user) {
     return { authenticated: false };
   }
