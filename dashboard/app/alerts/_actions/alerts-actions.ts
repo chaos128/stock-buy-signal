@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/api-client/supabase/server";
+import { createClient, getCurrentUser } from "@/api-client/supabase/server";
 
 export interface AlertRow {
   id: string;
@@ -23,14 +23,12 @@ export type AlertsResult =
   | { authenticated: true; success: false; error: string };
 
 export async function getAlerts(): Promise<AlertsResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return { authenticated: false };
   }
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("alerts")
     .select("*")

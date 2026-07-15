@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/api-client/supabase/server";
+import { createClient, getCurrentUser } from "@/api-client/supabase/server";
 
 export interface SubscriptionSetting {
   id: string;
@@ -17,14 +17,12 @@ export type SettingsResult =
   | { authenticated: true; success: false; error: string };
 
 export async function getSubscriptionSettings(): Promise<SettingsResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return { authenticated: false };
   }
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("subscriptions")
     .select("id, symbol, score_threshold, throttle_days")
