@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import pandas as pd
 
@@ -22,6 +23,8 @@ from indicators import average_true_range
 @dataclass(frozen=True)
 class BacktestParameters:
     entry_score_threshold: int = 2
+    # 추세 게이트(200일선) 필터: "on"=통과만(파랑) / "off"=미통과만(주황, 역추세 딥) / "any"=무시
+    trend_filter: Literal["on", "off", "any"] = "on"
     atr_period: int = 14
     atr_multiple: float = 2.0     # 손절폭 = atr_multiple × ATR
     min_risk_reward: float = 1.5
@@ -62,7 +65,13 @@ def simulate_trades(
     position = 0  # 현재 탐색 위치(정수 인덱스)
 
     while position < count - 1:
-        eligible = bool(gate.iloc[position]) and int(score.iloc[position]) >= params.entry_score_threshold
+        gate_value = bool(gate.iloc[position])
+        gate_ok = (
+            params.trend_filter == "any"
+            or (params.trend_filter == "on" and gate_value)
+            or (params.trend_filter == "off" and not gate_value)
+        )
+        eligible = gate_ok and int(score.iloc[position]) >= params.entry_score_threshold
         if not eligible:
             position += 1
             continue

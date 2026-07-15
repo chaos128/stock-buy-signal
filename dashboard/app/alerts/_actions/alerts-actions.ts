@@ -14,6 +14,7 @@ export interface AlertRow {
   riskRewardSufficient: boolean | null;
   pullback: boolean;
   marketRegime: boolean;
+  trendGatePassed: boolean;
 }
 
 export type AlertsResult =
@@ -43,6 +44,7 @@ export async function getAlerts(): Promise<AlertsResult> {
     const signals = (alert.active_signals ?? {}) as {
       pullback_signal?: boolean;
       market_regime_signal?: boolean;
+      trend_gate_passed?: boolean;
     };
     return {
       id: alert.id,
@@ -56,6 +58,7 @@ export async function getAlerts(): Promise<AlertsResult> {
       riskRewardSufficient: alert.risk_reward_sufficient,
       pullback: Boolean(signals.pullback_signal),
       marketRegime: Boolean(signals.market_regime_signal),
+      trendGatePassed: Boolean(signals.trend_gate_passed),
     };
   });
 

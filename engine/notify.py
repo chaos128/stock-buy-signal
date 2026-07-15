@@ -22,6 +22,11 @@ def _format(value) -> str:
     return f"{value:,.2f}" if isinstance(value, (int, float)) else "-"
 
 
+def is_oversold_dip(alert: dict) -> bool:
+    """게이트 OFF(하락추세) = 주황 과매도 딥. 게이트 ON = 파랑 추세 신호."""
+    return not alert.get("active_signals", {}).get("trend_gate_passed", True)
+
+
 def render_alert_html(alert: dict) -> str:
     signals = alert.get("active_signals", {})
     active_layers = []
@@ -37,10 +42,23 @@ def render_alert_html(alert: dict) -> str:
         else '<p style="color:#c0392b;margin:4px 0;">⚠ R:R 부족 — 손익비가 목표(1.5) 미만</p>'
     )
 
+    dip = is_oversold_dip(alert)
+    heading = (
+        f"⚠️ {alert['symbol']} 과매도 딥 · 역추세 주의" if dip
+        else f"📈 {alert['symbol']} 매수 관심 신호"
+    )
+    dip_warning = (
+        '<p style="margin:12px 0;padding:12px;background:#fdecea;border-radius:8px;font-size:13px;color:#a83232;">'
+        "🔻 <b>하락추세(200일선 아래)에서의 과매도 반등 시도</b>입니다. 백테스트상 이 유형은 추세 신호(파랑)보다 "
+        "승률·기대값이 낮고 낙폭이 큽니다(‘떨어지는 칼날’ 위험). 매수 권유가 아닌 <b>관찰용</b>이며, 진입 여부는 직접 판단하세요."
+        "</p>" if dip else ""
+    )
+
     return f"""\
 <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;">
-  <h2 style="margin:0 0 4px;">📈 {alert['symbol']} 매수 관심 신호</h2>
+  <h2 style="margin:0 0 4px;">{heading}</h2>
   <p style="margin:0 0 16px;color:#555;">정렬 점수 <b>{alert.get('score')}</b> · 켜진 신호: {layers_text}</p>
+  {dip_warning}
 
   <table style="width:100%;border-collapse:collapse;font-size:14px;">
     <tr><td style="padding:6px 0;color:#666;">종가(기준)</td><td style="text-align:right;"><b>{_format(alert.get('close_price'))}</b></td></tr>
@@ -64,7 +82,8 @@ def render_alert_html(alert: dict) -> str:
 
 
 def send_alert_email(to_email: str, alert: dict) -> dict:
-    subject = f"[{alert['symbol']} 매수 관심 신호] 정렬 점수 {alert.get('score')}"
+    label = "과매도 딥·역추세 주의" if is_oversold_dip(alert) else "매수 관심 신호"
+    subject = f"[{alert['symbol']} {label}] 정렬 점수 {alert.get('score')}"
     return resend.Emails.send(
         {
             "from": os.environ["RESEND_FROM_EMAIL"],

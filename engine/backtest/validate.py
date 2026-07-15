@@ -79,6 +79,15 @@ def main() -> None:
         _row("층2+3 (pullback+VIX)", pullback_plus_regime),
     ]).to_string(index=False))
 
+    # ---- 4) 추세 게이트별 성과 (파랑 게이트ON / 주황 게이트OFF / 전체) ----
+    # 주황(역추세 딥)을 알림으로 낼 가치가 있는지 = 게이트OFF 코호트의 엣지로 판정.
+    print("\n===== 4) 추세 게이트별 성과 (score>=2) =====")
+    print(pd.DataFrame([
+        _row("파랑 게이트ON", _run(qqq, vix, SignalParameters(), BacktestParameters(trend_filter="on"))),
+        _row("주황 게이트OFF", _run(qqq, vix, SignalParameters(), BacktestParameters(trend_filter="off"))),
+        _row("전체 (게이트무시)", _run(qqq, vix, SignalParameters(), BacktestParameters(trend_filter="any"))),
+    ]).to_string(index=False))
+
 
 if __name__ == "__main__":
     main()

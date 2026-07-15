@@ -4,9 +4,10 @@
 DB 래퍼/오케스트레이션은 그 위에 얇게.
 
 발송 규칙:
-  - 추세 게이트 통과 AND score >= subscription.score_threshold 여야 발송 후보
-  - edge-trigger + 스로틀: 동일 신호조합(fingerprint)이 throttle_days 내면 억제.
-    조합이 바뀌거나 기간이 지나면 재발송. (기간은 근사로 달력일 사용)
+  - 파랑(추세 신호): 게이트 통과 AND score >= threshold
+  - 주황(과매도 딥): 게이트 미통과 AND 눌림(pullback) AND score >= threshold — 역추세 관찰용
+  - edge-trigger + 스로틀: 동일 컨텍스트+조합(fingerprint)이 throttle_days 내면 억제.
+    조합이 바뀌거나 게이트가 뒤집히거나 기간이 지나면 재발송. (기간은 근사로 달력일 사용)
 """
 
 from __future__ import annotations
@@ -25,7 +26,11 @@ MACRO_CHECK_NOTE = (
 
 
 def signal_fingerprint(snapshot: dict) -> str:
-    """켜진 신호 조합을 문자열로. 동일 조합 재알림 억제 판정에 사용."""
+    """컨텍스트(추세/딥) + 켜진 신호 조합을 문자열로. 동일 조합 재알림 억제 판정에 사용.
+
+    추세(게이트 ON)와 딥(게이트 OFF)은 별개 컨텍스트 → 스로틀이 독립 동작하고,
+    게이트가 뒤집히면(딥→추세) 새 알림으로 재발화한다.
+    """
     active = []
     if snapshot.get("pullback_signal"):
         active.append("pullback")
@@ -33,7 +38,9 @@ def signal_fingerprint(snapshot: dict) -> str:
         active.append("regime")
     if snapshot.get("breadth_signal"):
         active.append("breadth")
-    return "+".join(active) if active else "none"
+    combo = "+".join(active) if active else "none"
+    context = "trend" if snapshot.get("trend_gate_passed") else "dip"
+    return f"{context}:{combo}"
 
 
 @dataclass(frozen=True)
@@ -53,21 +60,26 @@ def decide_alert(
 ) -> AlertDecision:
     """발송 여부 판정 (순수)."""
     fingerprint = signal_fingerprint(snapshot)
+    score = int(snapshot.get("score", 0))
+    gate_on = bool(snapshot.get("trend_gate_passed"))
+    pullback = bool(snapshot.get("pullback_signal"))
 
-    if not snapshot.get("trend_gate_passed"):
-        return AlertDecision(False, "trend gate off", fingerprint)
-    if int(snapshot.get("score", 0)) < score_threshold:
-        return AlertDecision(False, f"score {snapshot.get('score')} < {score_threshold}", fingerprint)
+    if score < score_threshold:
+        return AlertDecision(False, f"score {score} < {score_threshold}", fingerprint)
+    # 게이트 OFF 는 눌림(과매도 딥)일 때만 발송 — 눌림 없는 하락추세는 딥이 아님
+    if not gate_on and not pullback:
+        return AlertDecision(False, "gate off & no pullback dip", fingerprint)
 
-    # 스로틀: 동일 신호조합이 throttle_days 내 이미 발송됐으면 억제
+    # 스로틀: 동일 컨텍스트+조합(fingerprint)이 throttle_days 내 이미 발송됐으면 억제
     if last_alert_date is not None and last_fingerprint == fingerprint:
         days_since = (today - last_alert_date).days
         if days_since < throttle_days:
             return AlertDecision(
-                False, f"throttled ({days_since}d < {throttle_days}d, same signal '{fingerprint}')", fingerprint
+                False, f"throttled ({days_since}d < {throttle_days}d, same '{fingerprint}')", fingerprint
             )
 
-    return AlertDecision(True, "fire", fingerprint)
+    kind = "추세 신호" if gate_on else "과매도 딥"
+    return AlertDecision(True, f"fire ({kind})", fingerprint)
 
 
 def build_alert_record(subscription: dict, snapshot: dict, risk: RiskLevels) -> dict:

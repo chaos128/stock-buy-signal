@@ -30,6 +30,7 @@ export function AlertsTable({ alerts }: { alerts: AlertRow[] }) {
           <TableRow>
             <TableHead>일시</TableHead>
             <TableHead>종목</TableHead>
+            <TableHead>유형</TableHead>
             <TableHead>점수</TableHead>
             <TableHead>신호</TableHead>
             <TableHead className="text-right">종가</TableHead>
@@ -43,6 +44,15 @@ export function AlertsTable({ alerts }: { alerts: AlertRow[] }) {
             <TableRow key={alert.id}>
               <TableCell>{new Date(alert.triggeredAt).toLocaleDateString()}</TableCell>
               <TableCell className="font-medium">{alert.symbol}</TableCell>
+              <TableCell>
+                {alert.trendGatePassed ? (
+                  <Badge className="bg-primary text-primary-foreground">추세 신호</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500 text-amber-500">
+                    과매도 딥
+                  </Badge>
+                )}
+              </TableCell>
               <TableCell>{alert.score}</TableCell>
               <TableCell className="space-x-1">
                 {alert.pullback && <Badge variant="outline">눌림</Badge>}
