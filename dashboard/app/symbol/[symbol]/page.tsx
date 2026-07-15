@@ -4,8 +4,6 @@ import { getSymbolDetail } from "./_actions/symbol-actions";
 import { PriceChart } from "./_components/price-chart";
 import { ScoreBreakdown } from "./_components/score-breakdown";
 
-export const dynamic = "force-dynamic";
-
 export default async function SymbolPage({
   params,
 }: {

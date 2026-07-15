@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from "@/api-client/supabase/server";
+import { unstable_cache } from "next/cache";
+
+import { createPublicClient } from "@/api-client/supabase/server";
 
 export interface IndicatorBar {
   date: string;
@@ -16,8 +18,6 @@ export interface IndicatorBar {
   market_context_close: number | null;
   market_context_ma: number | null;
   trend_gate_passed: boolean;
-  pullback_signal: boolean;
-  market_regime_signal: boolean;
   score: number;
 }
 
@@ -41,8 +41,35 @@ export type SymbolDetailResult =
   | { success: true; data: SymbolDetail }
   | { success: false; error: string };
 
-export async function getSymbolDetail(symbol: string): Promise<SymbolDetailResult> {
-  const supabase = await createClient();
+// payload 축소: 소수 2자리 반올림(null 보존).
+function round2(value: unknown): number | null {
+  return value == null ? null : Math.round(Number(value) * 100) / 100;
+}
+
+// 차트/표에서 실제로 쓰는 필드만 + 반올림해서 봉 배열 생성(665KB→절반 수준).
+function trimBars(series: unknown): IndicatorBar[] {
+  const raw = (series as Record<string, unknown>[] | null) ?? [];
+  return raw.map((bar) => ({
+    date: bar.date as string,
+    open: round2(bar.open),
+    high: round2(bar.high),
+    low: round2(bar.low),
+    close: round2(bar.close),
+    simple_moving_average_200: round2(bar.simple_moving_average_200),
+    bollinger_lower: round2(bar.bollinger_lower),
+    bollinger_middle: round2(bar.bollinger_middle),
+    bollinger_upper: round2(bar.bollinger_upper),
+    rsi: round2(bar.rsi),
+    market_context_close: round2(bar.market_context_close),
+    market_context_ma: round2(bar.market_context_ma),
+    trend_gate_passed: Boolean(bar.trend_gate_passed),
+    score: Number(bar.score ?? 0),
+  }));
+}
+
+// 공개 데이터 fetch(쿠키 없는 클라이언트) — unstable_cache 로 감싸 캐시 가능.
+async function fetchSymbolDetail(symbol: string): Promise<SymbolDetailResult> {
+  const supabase = createPublicClient();
 
   const { data: curated, error: curatedError } = await supabase
     .from("curated_symbols")
@@ -83,7 +110,15 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetailResul
       bollingerLower: snapshot?.bollinger_lower ?? null,
       marketContextClose: snapshot?.market_context_close ?? null,
       marketContextMovingAverage: snapshot?.market_context_moving_average_20 ?? null,
-      bars: (snapshot?.indicator_series as unknown as IndicatorBar[]) ?? [],
+      bars: trimBars(snapshot?.indicator_series),
     },
   };
+}
+
+// 하루 1회(워커)만 갱신되는 공개 데이터 → 1시간 캐시. tag 로 on-demand revalidate 확장 가능.
+export async function getSymbolDetail(symbol: string): Promise<SymbolDetailResult> {
+  return unstable_cache(() => fetchSymbolDetail(symbol), ["symbol-detail", symbol], {
+    revalidate: 3600,
+    tags: [`symbol-detail:${symbol}`],
+  })();
 }
