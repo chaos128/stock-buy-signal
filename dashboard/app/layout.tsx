@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 
-import { createClient } from "@/api-client/supabase/server";
+import { getCurrentUser } from "@/api-client/supabase/server";
 import { Navigation } from "@/components/navigation";
 import { PwaRegister } from "@/components/pwa-register";
 import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
@@ -23,10 +23,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   return (
     <html lang="ko" className="dark">

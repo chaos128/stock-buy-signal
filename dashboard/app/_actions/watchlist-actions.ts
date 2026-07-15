@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from "@/api-client/supabase/server";
+import { unstable_cache } from "next/cache";
+
+import { createClient, createPublicClient } from "@/api-client/supabase/server";
 
 export interface WatchlistItem {
   symbol: string;
@@ -15,54 +17,76 @@ export type WatchlistResult =
   | { success: true; data: WatchlistItem[] }
   | { success: false; error: string };
 
-// 유저 세션(RLS)으로 curated 종목 + 종목별 최신 스냅샷 조회.
-export async function getWatchlist(): Promise<WatchlistResult> {
-  const supabase = await createClient();
+type PublicWatchlistItem = Omit<WatchlistItem, "isSubscribed">;
 
-  const { data: symbols, error: symbolsError } = await supabase
-    .from("curated_symbols")
-    .select("symbol, display_name")
-    .eq("is_active", true);
-  if (symbolsError) {
-    return { success: false, error: symbolsError.message };
-  }
+// 공개 부분(종목 + 종목별 최신 스냅샷)은 모두 동일 + 하루 1회 갱신 → 캐시.
+// 쿠키 없는 anon 클라이언트라 unstable_cache 안에서 사용 가능.
+const getPublicWatchlist = unstable_cache(
+  async (): Promise<PublicWatchlistItem[]> => {
+    const supabase = createPublicClient();
 
-  const { data: snapshots, error: snapshotsError } = await supabase
-    .from("signal_snapshots")
-    .select("symbol, close_price, score, captured_at")
-    .order("captured_at", { ascending: false });
-  if (snapshotsError) {
-    return { success: false, error: snapshotsError.message };
-  }
-
-  // 현재 유저의 활성 구독 (RLS 로 본인 것만 반환)
-  const { data: subscriptions, error: subscriptionsError } = await supabase
-    .from("subscriptions")
-    .select("symbol")
-    .eq("is_active", true);
-  if (subscriptionsError) {
-    return { success: false, error: subscriptionsError.message };
-  }
-  const subscribedSymbols = new Set((subscriptions ?? []).map((row) => row.symbol));
-
-  const latestBySymbol = new Map<string, NonNullable<typeof snapshots>[number]>();
-  for (const snapshot of snapshots ?? []) {
-    if (!latestBySymbol.has(snapshot.symbol)) {
-      latestBySymbol.set(snapshot.symbol, snapshot);
+    const { data: symbols, error: symbolsError } = await supabase
+      .from("curated_symbols")
+      .select("symbol, display_name")
+      .eq("is_active", true);
+    if (symbolsError) {
+      throw new Error(symbolsError.message);
     }
-  }
 
-  const items: WatchlistItem[] = (symbols ?? []).map((symbol) => {
-    const latest = latestBySymbol.get(symbol.symbol);
+    const { data: snapshots, error: snapshotsError } = await supabase
+      .from("signal_snapshots")
+      .select("symbol, close_price, score, captured_at")
+      .order("captured_at", { ascending: false });
+    if (snapshotsError) {
+      throw new Error(snapshotsError.message);
+    }
+
+    const latestBySymbol = new Map<string, NonNullable<typeof snapshots>[number]>();
+    for (const snapshot of snapshots ?? []) {
+      if (!latestBySymbol.has(snapshot.symbol)) {
+        latestBySymbol.set(snapshot.symbol, snapshot);
+      }
+    }
+
+    return (symbols ?? []).map((symbol) => {
+      const latest = latestBySymbol.get(symbol.symbol);
+      return {
+        symbol: symbol.symbol,
+        displayName: symbol.display_name,
+        score: latest?.score ?? null,
+        closePrice: latest?.close_price ?? null,
+        capturedAt: latest?.captured_at ?? null,
+      };
+    });
+  },
+  ["watchlist-public"],
+  { revalidate: 3600, tags: ["watchlist-public"] },
+);
+
+// 공개 데이터(캐시) + 현재 유저 구독(라이브, RLS)을 합쳐 반환.
+export async function getWatchlist(): Promise<WatchlistResult> {
+  try {
+    const publicItems = await getPublicWatchlist();
+
+    // 현재 유저의 활성 구독 (RLS 로 본인 것만; 비로그인은 빈 결과)
+    const supabase = await createClient();
+    const { data: subscriptions, error: subscriptionsError } = await supabase
+      .from("subscriptions")
+      .select("symbol")
+      .eq("is_active", true);
+    if (subscriptionsError) {
+      return { success: false, error: subscriptionsError.message };
+    }
+    const subscribedSymbols = new Set((subscriptions ?? []).map((row) => row.symbol));
+
     return {
-      symbol: symbol.symbol,
-      displayName: symbol.display_name,
-      score: latest?.score ?? null,
-      closePrice: latest?.close_price ?? null,
-      capturedAt: latest?.captured_at ?? null,
-      isSubscribed: subscribedSymbols.has(symbol.symbol),
+      success: true,
+      data: publicItems.map((item) => ({
+        ...item,
+        isSubscribed: subscribedSymbols.has(item.symbol),
+      })),
     };
-  });
-
-  return { success: true, data: items };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "watchlist load failed" };
+  }
 }

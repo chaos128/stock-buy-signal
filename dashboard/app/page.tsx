@@ -1,15 +1,10 @@
-import { createClient } from "@/api-client/supabase/server";
+import { getCurrentUser } from "@/api-client/supabase/server";
 
 import { getWatchlist } from "./_actions/watchlist-actions";
 import { Watchlist } from "./_components/watchlist";
 
-export const dynamic = "force-dynamic";
-
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const result = await getWatchlist();
 
   return (

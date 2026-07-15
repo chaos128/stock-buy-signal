@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 import type { Database } from "@/api-client/supabase/database.types";
 
@@ -40,3 +41,13 @@ export async function createClient() {
     },
   );
 }
+
+// 현재 유저 조회 — React cache 로 한 요청 내 중복 호출(레이아웃+페이지)을 1회로 dedupe.
+// (auth.getUser 는 매번 Supabase auth 서버 검증 왕복이라 중복 제거 효과가 큼)
+export const getCurrentUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
