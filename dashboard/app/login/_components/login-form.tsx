@@ -16,6 +16,21 @@ export function LoginForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  async function handleGoogle() {
+    setLoading(true);
+    setMessage(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+    }
+    // 성공 시 구글로 리다이렉트되므로 이후 코드는 실행되지 않음
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
@@ -73,6 +88,16 @@ export function LoginForm() {
 
       <Button type="submit" disabled={loading}>
         {loading ? "처리 중..." : mode === "signin" ? "로그인" : "회원가입"}
+      </Button>
+
+      <div className="flex items-center gap-3 py-1">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">또는</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <Button type="button" variant="outline" onClick={handleGoogle} disabled={loading}>
+        Google로 계속하기
       </Button>
 
       <button
