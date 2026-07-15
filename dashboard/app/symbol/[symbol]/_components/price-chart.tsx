@@ -43,6 +43,10 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       return;
     }
 
+    // 포인터 기기(데스크톱: 마우스·트랙패드)에서만 휠 줌 허용. 터치기기(모바일)는 페이지 스크롤 유지.
+    // (물리 마우스 vs 트랙패드는 wheel 이벤트로 구분 불가 → 둘 다 포인터로 취급)
+    const wheelZoomEnabled = window.matchMedia("(pointer: fine)").matches;
+
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
@@ -55,7 +59,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       },
       rightPriceScale: { borderColor: "rgba(255,255,255,0.12)" },
       timeScale: { borderColor: "rgba(255,255,255,0.12)" },
-      handleScale: { mouseWheel: false }, // 휠 스크롤 줌 비활성(드래그 팬·핀치·기간버튼은 유지)
+      handleScale: { mouseWheel: wheelZoomEnabled }, // 데스크톱만 휠 줌; 터치기기는 페이지 스크롤 유지
       autoSize: true,
     });
 
