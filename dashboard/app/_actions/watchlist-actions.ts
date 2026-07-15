@@ -2,7 +2,7 @@
 
 import { unstable_cache } from "next/cache";
 
-import { createClient, createPublicClient } from "@/api-client/supabase/server";
+import { createClient, createPublicClient, getCurrentUser } from "@/api-client/supabase/server";
 
 export interface WatchlistItem {
   symbol: string;
@@ -68,7 +68,14 @@ export async function getWatchlist(): Promise<WatchlistResult> {
   try {
     const publicItems = await getPublicWatchlist();
 
-    // 현재 유저의 활성 구독 (RLS 로 본인 것만; 비로그인은 빈 결과)
+    // 비로그인이면 구독이 없으므로 DB 왕복 생략(공개 방문자 최적화).
+    // getCurrentUser 는 React cache 라 페이지가 이미 부른 호출과 dedupe 됨.
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: true, data: publicItems.map((item) => ({ ...item, isSubscribed: false })) };
+    }
+
+    // 로그인 유저의 활성 구독 (RLS 로 본인 것만)
     const supabase = await createClient();
     const { data: subscriptions, error: subscriptionsError } = await supabase
       .from("subscriptions")
