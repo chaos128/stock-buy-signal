@@ -104,7 +104,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       if (bar.trend_gate_passed) {
         markers.push({ time: bar.date as Time, position: "belowBar", color: "#0ea5e9", shape: "arrowUp" });
       } else {
-        markers.push({ time: bar.date as Time, position: "aboveBar", color: "#f59e0b", shape: "arrowUp" });
+        markers.push({ time: bar.date as Time, position: "aboveBar", color: "#f59e0b", shape: "arrowDown" });
       }
     }
     createSeriesMarkers(candles, markers);
@@ -148,7 +148,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
         bar.score >= 2
           ? bar.trend_gate_passed
             ? '<div style="color:#0ea5e9">▲ 신호</div>'
-            : '<div style="color:#f59e0b">▲ 과매도 딥</div>'
+            : '<div style="color:#f59e0b">▼ 과매도 딥</div>'
           : "";
       return (
         `<div style="color:#8a8a8a;margin-bottom:2px">${bar.date}</div>` +
@@ -225,7 +225,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
           <span className="text-primary">▲ 신호</span>(추세↑ + score≥2)
         </span>
         <span>
-          <span className="text-amber-500">▲ 과매도 딥</span>(추세↓)
+          <span className="text-amber-500">▼ 과매도 딥</span>(추세↓)
         </span>
         <span>중단: RSI(14, 40선)</span>
         <span>하단: VIX(+20일선)</span>

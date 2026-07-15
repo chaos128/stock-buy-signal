@@ -17,8 +17,8 @@ import type { IndicatorBar } from "../_actions/symbol-actions";
 import { type RangeKey, rangeStartDate } from "./chart-range";
 import { computeComparison } from "./investment-math";
 
-const won = (value: number) => `₩${Math.round(value).toLocaleString()}`;
-const signedWon = (value: number) => `${value >= 0 ? "+" : "-"}₩${Math.round(Math.abs(value)).toLocaleString()}`;
+const won = (value: number) => Math.round(value).toLocaleString();
+const signedWon = (value: number) => `${value >= 0 ? "+" : "-"}${Math.round(Math.abs(value)).toLocaleString()}`;
 
 export function InvestmentComparison({
   bars,
