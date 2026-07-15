@@ -15,36 +15,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { IndicatorBar } from "../_actions/symbol-actions";
+import { RANGE_KEYS, type RangeKey, rangeStartDate } from "./chart-range";
+import { InvestmentComparison } from "./investment-comparison";
 
-type RangeKey = "3M" | "YTD" | "1Y" | "3Y" | "5Y";
-const RANGE_KEYS: RangeKey[] = ["3M", "YTD", "1Y", "3Y", "5Y"];
-
-// 마지막 봉 날짜 기준으로 선택 기간만큼 뺀 시작 날짜(YYYY-MM-DD).
-function rangeFromDate(lastDate: string, range: RangeKey): string {
-  const [year, month, day] = lastDate.split("-").map(Number);
-  const toIso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
-  switch (range) {
-    case "3M":
-      return toIso(year, month - 3, day);
-    case "YTD":
-      return `${year}-01-01`;
-    case "1Y":
-      return toIso(year - 1, month, day);
-    case "3Y":
-      return toIso(year - 3, month, day);
-    case "5Y":
-      return toIso(year - 5, month, day);
-  }
-}
-
-// 보이는 구간을 [기간 시작, 마지막 봉]으로. 시작이 데이터보다 이르면 첫 봉으로 clamp.
+// 보이는 구간을 [기간 시작, 마지막 봉]으로.
 function applyVisibleRange(chart: IChartApi, bars: IndicatorBar[], range: RangeKey) {
-  const lastDate = bars[bars.length - 1].date;
-  const firstDate = bars[0].date;
-  const from = rangeFromDate(lastDate, range);
   chart.timeScale().setVisibleRange({
-    from: (from < firstDate ? firstDate : from) as Time,
-    to: lastDate as Time,
+    from: rangeStartDate(bars, range) as Time,
+    to: bars[bars.length - 1].date as Time,
   });
 }
 
@@ -55,6 +33,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [activeRange, setActiveRange] = useState<RangeKey>("1Y");
+  const [investmentAmount, setInvestmentAmount] = useState(100_000_000);
 
   useEffect(() => {
     if (!containerRef.current || bars.length === 0) {
@@ -251,6 +230,12 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
           className="pointer-events-none absolute left-0 top-0 z-10 hidden whitespace-nowrap rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs leading-relaxed shadow-md backdrop-blur"
         />
       </div>
+      <InvestmentComparison
+        bars={bars}
+        activeRange={activeRange}
+        amount={investmentAmount}
+        onAmountChange={setInvestmentAmount}
+      />
     </div>
   );
 }
