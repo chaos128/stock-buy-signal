@@ -60,6 +60,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
       rightPriceScale: { borderColor: "rgba(255,255,255,0.12)" },
       timeScale: { borderColor: "rgba(255,255,255,0.12)" },
       handleScale: { mouseWheel: wheelZoomEnabled }, // 데스크톱만 휠 줌; 터치기기는 페이지 스크롤 유지
+      handleScroll: { vertTouchDrag: false }, // 모바일 세로 스와이프 = 페이지 스크롤(차트가 안 가로챔), 가로 스와이프만 차트 팬
       autoSize: true,
     });
 
@@ -125,7 +126,6 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     panes[1]?.setStretchFactor(1);
     panes[2]?.setStretchFactor(1);
     chartRef.current = chart;
-    applyVisibleRange(chart, bars, "1Y"); // 기본 표시 구간
 
     // 각 pane 좌상단 라벨을 pane 높이에 맞춰 배치(pane0 은 top:6 고정).
     const positionPaneLabels = () => {
@@ -216,6 +216,21 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     };
   }, [bars]);
 
+  // 선택 기간 localStorage 복원 (마운트 후 1회)
+  useEffect(() => {
+    const saved = window.localStorage.getItem("chart-range");
+    if (saved && (RANGE_KEYS as readonly string[]).includes(saved)) {
+      setActiveRange(saved as RangeKey);
+    }
+  }, []);
+
+  // activeRange 변경 시 차트 보이는 구간 반영 (초기·버튼·복원 모두)
+  useEffect(() => {
+    if (chartRef.current && bars.length > 0) {
+      applyVisibleRange(chartRef.current, bars, activeRange);
+    }
+  }, [activeRange, bars]);
+
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-y-1 text-xs text-muted-foreground md:flex-row md:flex-wrap md:items-center md:gap-x-3 md:gap-y-0">
@@ -236,10 +251,8 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
             key={range}
             type="button"
             onClick={() => {
-              if (chartRef.current) {
-                applyVisibleRange(chartRef.current, bars, range);
-              }
               setActiveRange(range);
+              window.localStorage.setItem("chart-range", range);
             }}
             className={cn(
               "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
