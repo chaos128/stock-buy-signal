@@ -28,14 +28,17 @@ function applyVisibleRange(chart: IChartApi, bars: IndicatorBar[], range: RangeK
 
 // 단일 차트 + 3 pane (캔들+BB / RSI / VIX). 시간축 공유 → pan/zoom 동기화.
 // hover 시 crosshair 위치의 값을 커서 옆 floating tooltip 한 곳에 모아 표시.
-export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
+// initialRange: 서버가 쿠키에서 읽어 전달 → SSR/클라 동일 초깃값이라 플래시·hydration 불일치 없음.
+export function PriceChart({ bars, initialRange }: { bars: IndicatorBar[]; initialRange?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const pane0LabelRef = useRef<HTMLDivElement>(null);
   const pane1LabelRef = useRef<HTMLDivElement>(null);
   const pane2LabelRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const [activeRange, setActiveRange] = useState<RangeKey>("1Y");
+  const [activeRange, setActiveRange] = useState<RangeKey>(
+    initialRange && (RANGE_KEYS as readonly string[]).includes(initialRange) ? (initialRange as RangeKey) : "1Y",
+  );
   const [investmentAmount, setInvestmentAmount] = useState(100_000_000);
 
   useEffect(() => {
@@ -216,15 +219,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
     };
   }, [bars]);
 
-  // 선택 기간 localStorage 복원 (마운트 후 1회)
-  useEffect(() => {
-    const saved = window.localStorage.getItem("chart-range");
-    if (saved && (RANGE_KEYS as readonly string[]).includes(saved)) {
-      setActiveRange(saved as RangeKey);
-    }
-  }, []);
-
-  // activeRange 변경 시 차트 보이는 구간 반영 (초기·버튼·복원 모두)
+  // activeRange 변경 시 차트 보이는 구간 반영 (초기·버튼 모두)
   useEffect(() => {
     if (chartRef.current && bars.length > 0) {
       applyVisibleRange(chartRef.current, bars, activeRange);
@@ -252,7 +247,7 @@ export function PriceChart({ bars }: { bars: IndicatorBar[] }) {
             type="button"
             onClick={() => {
               setActiveRange(range);
-              window.localStorage.setItem("chart-range", range);
+              document.cookie = `chart-range=${range}; path=/; max-age=31536000; samesite=lax`;
             }}
             className={cn(
               "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",

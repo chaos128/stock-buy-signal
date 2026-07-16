@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { getSymbolDetail } from "./_actions/symbol-actions";
@@ -26,6 +27,7 @@ export default async function SymbolPage({
   }
 
   const detail = result.data;
+  const savedRange = (await cookies()).get("chart-range")?.value;
 
   return (
     <>
@@ -43,7 +45,7 @@ export default async function SymbolPage({
       <main className="mx-auto max-w-[90rem] space-y-6 px-6 py-6">
         <ScoreBreakdown detail={detail} />
         {detail.bars.length > 0 ? (
-          <PriceChart bars={detail.bars} />
+          <PriceChart bars={detail.bars} initialRange={savedRange} />
         ) : (
           <div className="rounded-md border border-border p-8 text-center text-muted-foreground">
             차트 데이터가 없습니다.
