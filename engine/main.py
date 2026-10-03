@@ -20,6 +20,7 @@ from store import (
     build_indicator_series,
     get_active_curated_symbols,
     get_client,
+    get_latest_snapshot_day,
     snapshot_from_signal_row,
     upsert_signal_snapshot,
 )
@@ -47,6 +48,19 @@ def run() -> None:
         last = signals.iloc[-1]
         position = signals.index.get_loc(last.name)
         today = last.name.date()
+
+        # 건너뛴 거래일 보충. yfinance 에 그날 봉이 늦게 올라오면 전날 봉을 다시 저장하고 끝나
+        # 그날이 영영 빠진다(실측 9/14·9/16). 워크플로가 멈췄던 구간도 여기서 채워진다.
+        # 신호는 인과적이라 signals.loc[:day] 가 그날 실행 결과와 같다. 단, 사이에 배당락이 끼면
+        # 가격 컬럼은 이후 배당만큼 소급 조정된 값으로 남는다(균일 배율이라 score·boolean 은 불변).
+        # 알림은 최신 봉만 — 지난 날짜 신호를 지금 보내면 안 된다. 첫 실행은 과거를 채우지 않는다.
+        last_stored = get_latest_snapshot_day(client, symbol)
+        if last_stored is not None:
+            for day in signals.index[(signals.index > last_stored) & (signals.index < last.name)]:
+                missed = snapshot_from_signal_row(symbol, signals.loc[day])
+                missed["indicator_series"] = build_indicator_series(ohlc, signals.loc[:day])
+                upsert_signal_snapshot(client, missed)
+                print(f"{symbol} ({day.date()}): 누락분 보충, score={missed['score']}")
 
         snapshot = snapshot_from_signal_row(symbol, last)
         snapshot["indicator_series"] = build_indicator_series(ohlc, signals)

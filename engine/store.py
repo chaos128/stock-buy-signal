@@ -91,6 +91,20 @@ def get_active_curated_symbols(client: Client) -> list[dict]:
     return client.table("curated_symbols").select("*").eq("is_active", True).execute().data
 
 
+def get_latest_snapshot_day(client: Client, symbol: str) -> pd.Timestamp | None:
+    rows = (
+        client.table("signal_snapshots")
+        .select("captured_at")
+        .eq("symbol", symbol)
+        .order("captured_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    # captured_at 은 timestamptz(UTC 자정) — signals 인덱스(tz-naive 날짜)와 비교하려고 날짜만 취함
+    return pd.Timestamp(rows[0]["captured_at"][:10]) if rows else None
+
+
 def upsert_signal_snapshot(client: Client, snapshot: dict) -> dict:
     # (symbol, captured_at) 유니크 → 같은 날 재실행 시 갱신(멱등)
     return (
