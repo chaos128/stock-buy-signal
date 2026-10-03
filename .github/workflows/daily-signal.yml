@@ -27,3 +27,15 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run python main.py
+
+  # public 저장소는 커밋이 60일 없으면 스케줄이 꺼진다(2026-09-18 실제로 꺼져 9/21~10/1 누락).
+  # 매 실행마다 이 워크플로를 공식 enable API 로 다시 켜 비활성 판정을 미룬다 — 더미 커밋은 만들지 않는다.
+  # 신호 잡과 분리해 시크릿 없이 actions: write 만 받는다.
+  keepalive:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/daily-signal.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
