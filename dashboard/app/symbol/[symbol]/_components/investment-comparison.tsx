@@ -33,10 +33,9 @@ export function InvestmentComparison({
 }) {
   const fromDate = rangeStartDate(bars, activeRange);
   const results = useMemo(() => computeComparison(bars, fromDate, amount), [bars, fromDate, amount]);
-  const bestReturn = Math.max(
-    ...results.filter((result) => result.buyCount > 0).map((result) => result.returnPercent),
-    Number.NEGATIVE_INFINITY,
-  );
+  // 납입 일정은 전략과 무관해 모두 같다
+  const contributed = results[0]?.contributed ?? 0;
+  const bestReturn = Math.max(...results.map((result) => result.returnPercent), Number.NEGATIVE_INFINITY);
 
   return (
     <div className="space-y-3 rounded-lg border border-border p-4">
@@ -44,11 +43,11 @@ export function InvestmentComparison({
         <div>
           <h3 className="text-sm font-semibold text-foreground">전략별 수익 비교</h3>
           <p className="text-xs text-muted-foreground">
-            선택 기간({activeRange}) 동안 신호일마다 총액을 1/n 균등 투자, 현재가로 평가
+            선택 기간({activeRange}) 매월 첫 거래일 납입 · 총 {won(contributed)}원 · 매수일에 모인 현금 전액 투자, 현재가로 평가
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">총 투자금</span>
+          <span className="text-muted-foreground">월 투자금</span>
           <Input
             type="text"
             inputMode="numeric"
@@ -71,11 +70,12 @@ export function InvestmentComparison({
             <TableHead className="text-right">평가금액</TableHead>
             <TableHead className="text-right">수익금</TableHead>
             <TableHead className="text-right">수익률</TableHead>
+            <TableHead className="text-right">현금 비중</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {results.map((result) => {
-            const empty = result.buyCount === 0;
+            const empty = result.contributed === 0;
             const isBest = !empty && result.returnPercent === bestReturn;
             const positive = result.profit >= 0;
             return (
@@ -92,6 +92,9 @@ export function InvestmentComparison({
                 <TableCell className={cn("text-right font-medium", !empty && (positive ? "text-green-500" : "text-destructive"))}>
                   {empty ? "-" : `${result.returnPercent >= 0 ? "+" : ""}${result.returnPercent.toFixed(1)}%`}
                 </TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {empty ? "-" : `${Math.round((result.cash / result.finalValue) * 100)}%`}
+                </TableCell>
               </TableRow>
             );
           })}
@@ -99,7 +102,7 @@ export function InvestmentComparison({
       </Table>
 
       <p className="text-xs text-muted-foreground">
-        ※ QQQ(USD) 자산수익률 기준 · 환율 변동 미반영 · 일주일 내 중복 신호는 1회로 집계
+        ※ QQQ(USD) 자산수익률 기준 · 환율 변동 미반영 · 신호 다음 거래일 시가 매수 · 대기 현금 연 3% 복리, 기말 현금은 평가금액에 포함
       </p>
     </div>
   );

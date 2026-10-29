@@ -39,7 +39,7 @@ export function PriceChart({ bars, initialRange }: { bars: IndicatorBar[]; initi
   const [activeRange, setActiveRange] = useState<RangeKey>(
     initialRange && (RANGE_KEYS as readonly string[]).includes(initialRange) ? (initialRange as RangeKey) : "1Y",
   );
-  const [investmentAmount, setInvestmentAmount] = useState(100_000_000);
+  const [investmentAmount, setInvestmentAmount] = useState(3_000_000);
 
   useEffect(() => {
     if (!containerRef.current || bars.length === 0) {
